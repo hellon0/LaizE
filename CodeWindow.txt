@@ -1,0 +1,6 @@
+
+var value = 1;
+
+for (i < 3; +value) {
+   prt(i);
+}

@@ -1,0 +1,26 @@
+public enum TokenType {
+
+
+    //Single character tokens
+    OPEN_CURLY, CLOSED_CURLY, OPEN_PAREN, CLOSED_PAREN,
+    OPEN_SQUARE, CLOSED_SQUARE, COLON, SEMICOLON, DOT, COMMA,
+    QUOTE, PLUS, MINUS, STAR,
+
+    //One or Two character tokens
+    EQUALS, EQUALS_EQUALS,
+    GREATER, GREATER_EQUALS,
+    LESS, LESS_EQUALS,
+    BANG, BANG_EQUALS,
+    SLASH, SLASH_SLASH,
+
+    //Multiple character
+    IDENTIFIER, VAR, STRING, INT, DEC, BOOLEAN, TRUE, FALSE,
+    PRINT, INPUT, 
+    IF, ELSE_IF, ELSE, WHILE, FOR, 
+    OR, AND,
+    FUNCTION, RETURN,
+    RETURN_STR, RETURN_DEC, RETURN_INT, RETURN_BOOL,
+    NA, 
+
+    EOF
+}
