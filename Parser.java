@@ -5,20 +5,18 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
 
-// Working on : Commenting / more function implementation
-// Details : When checking for identifiers, also check for functions and whether or not they're declared - currently in ForLoops
 
-//Subtask : change 'positionSave' to a Stack to allow multiple position saves at once
 
 public class Parser {
     private ArrayList<Token> tokens;
     private static Map<String, Integer> functions;
     public static ArrayList<Var> varStorage;
     private int position;
-    private int positionSave;
     private boolean inFunc = false;
     private TokenType returnedType = TokenType.NA;
     private Stack<TokenType> returnTypes = new Stack<>();
+    private Stack<Integer> positionSaves = new Stack<>();
+    private Stack<ArrayList<Var>> tempVarStorage = new Stack<>();
 
     public void runCode() {
         while (!EOF()) {
@@ -50,20 +48,20 @@ public class Parser {
                     if (inFunc) {
 
                         Token returned = returnHandler(position);
-                        while (tokens.get(positionSave).TokenType != TokenType.CLOSED_PAREN || parenBuffer > 0) {
-                            if (tokens.get(positionSave).TokenType == TokenType.OPEN_PAREN) {
+                        while (tokens.get(positionSaves.peek()).TokenType != TokenType.CLOSED_PAREN || parenBuffer > 0) {
+                            if (tokens.get(positionSaves.peek()).TokenType == TokenType.OPEN_PAREN) {
                                 parenBuffer++;
                             }
-                            if (tokens.get(positionSave+1).TokenType == TokenType.CLOSED_PAREN) {
+                            if (tokens.get(positionSaves.peek()+1).TokenType == TokenType.CLOSED_PAREN) {
                                 parenBuffer -= 1;
                             }
-                            tokens.remove(positionSave);
+                            tokens.remove(tokens.get(positionSaves.peek()));
                             
                         }                        
                         
-                        tokens.remove(positionSave);
-                        tokens.add(positionSave, returned);
-                        position = positionSave - 1;
+                        tokens.remove(tokens.get(positionSaves.peek()));
+                        tokens.add(positionSaves.peek(), returned);
+                        position = positionSaves.peek() - 1;
                         inFunc = false;
                         break;
                     } else {
@@ -134,14 +132,14 @@ public class Parser {
                         //Checks for function & whether or not the function is declared. if not a function, checks whether it's an undeclared function or variable
                         if (!varFound && isFunc()) {
                             if (peek(1).TokenType != TokenType.OPEN_PAREN) {
-                                LaizE.Error("Missing token '('", "Parser.opperationInt", tokens.get(position).line);
+                                LaizE.Error("Missing token '('", "Parser.printValue", tokens.get(position).line);
                             }
                             callFunction();
                         } else if (!varFound && !isFunc()) {
                             if (peek(1).TokenType == TokenType.OPEN_PAREN) {
-                                LaizE.Error("Undeclared function " + tokens.get(position).data, "Parser.opperationInt", tokens.get(position).line);
+                                LaizE.Error("Undeclared function " + tokens.get(position).data, "Parser.printValue", tokens.get(position).line);
                             } else {
-                                LaizE.Error("Undeclared variable " + tokens.get(position).data, "Parser.opperationInt", tokens.get(position).line);
+                                LaizE.Error("Undeclared variable " + tokens.get(position).data, "Parser.printValue", tokens.get(position).line);
                             }
                         }
 
@@ -169,14 +167,15 @@ public class Parser {
                         //Checks for function & whether or not the function is declared. if not a function, checks whether it's an undeclared function or variable
                         if (!varFound && isFunc()) {
                             if (peek(1).TokenType != TokenType.OPEN_PAREN) {
-                                LaizE.Error("Missing token '('", "Parser.opperationInt", tokens.get(position).line);
+                                LaizE.Error("Missing token '('", "Parser.printValue", tokens.get(position).line);
                             }
                             callFunction();
+                            position--;
                         } else if (!varFound && !isFunc()) {
                             if (peek(1).TokenType == TokenType.OPEN_PAREN) {
-                                LaizE.Error("Undeclared function " + tokens.get(position).data, "Parser.opperationInt", tokens.get(position).line);
+                                LaizE.Error("Undeclared function " + tokens.get(position).data, "Parser.printValue", tokens.get(position).line);
                             } else {
-                                LaizE.Error("Undeclared variable " + tokens.get(position).data, "Parser.opperationInt", tokens.get(position).line);
+                                LaizE.Error("Undeclared variable " + tokens.get(position).data, "Parser.printValue", tokens.get(position).line);
                             }
                         }
 
@@ -320,17 +319,26 @@ public class Parser {
                     }
                 }
 
+                if (inFunc && !varFound && !this.tempVarStorage.empty()) {
+                    for (int i = 0; i < this.tempVarStorage.peek().size(); i++) {
+                        if (this.tempVarStorage.peek().get(i).identifier.equals(tokens.get(position).data)) {
+                            problem.add(new Token(this.tempVarStorage.peek().get(i).TokenType, this.tempVarStorage.peek().get(i).data, tokens.get(position).line));
+                            varFound = true;
+                            break;
+                        }
+                    }
+                }
                 //Checks for function & whether or not the function is declared. if not a function, checks whether it's an undeclared function or variable
                 if (!varFound && isFunc()) {
                     if (peek(1).TokenType != TokenType.OPEN_PAREN) {
-                        LaizE.Error("Missing token '('", "Parser.opperationInt", tokens.get(position).line);
+                        LaizE.Error("Missing token '('", "Parser.opperationDec", tokens.get(position).line);
                     }
                     callFunction();
                 } else if (!varFound && !isFunc()) {
                     if (peek(1).TokenType == TokenType.OPEN_PAREN) {
-                        LaizE.Error("Undeclared function " + tokens.get(position).data, "Parser.opperationInt", tokens.get(position).line);
+                        LaizE.Error("Undeclared function " + tokens.get(position).data, "Parser.opperationDec", tokens.get(position).line);
                     } else {
-                        LaizE.Error("Undeclared variable " + tokens.get(position).data, "Parser.opperationInt", tokens.get(position).line);
+                        LaizE.Error("Undeclared variable " + tokens.get(position).data, "Parser.opperationDec", tokens.get(position).line);
                     }
                 }
                 varFound = false;
@@ -356,11 +364,21 @@ public class Parser {
                 for (int i = 0; i < varStorage.size(); i++) {
                     if (varStorage.get(i).identifier.equals(tokens.get(position).data)) {
                         varFound = true;
-                        problem.add(new Token(varStorage.get(i).TokenType, varStorage.get(i).data, varStorage.get(i).line));
+                        problem.add(new Token(varStorage.get(i).TokenType, varStorage.get(i).data, tokens.get(position).line));
                     }
                 }
 
                 //Checks for function & whether or not the function is declared. if not a function, checks whether it's an undeclared function or variable
+                if (inFunc && !varFound && !this.tempVarStorage.empty()) {
+                    for (int i = 0; i < this.tempVarStorage.peek().size(); i++) {
+                        if (this.tempVarStorage.peek().get(i).identifier.equals(tokens.get(position).data)) {
+                            problem.add(new Token(this.tempVarStorage.peek().get(i).TokenType, this.tempVarStorage.peek().get(i).data, tokens.get(position).line));
+                            varFound = true;
+                            break;
+                        }
+                    }
+                }
+                
                 if (!varFound && isFunc()) {
                     if (peek(1).TokenType != TokenType.OPEN_PAREN) {
                         LaizE.Error("Missing token '('", "Parser.opperationInt", tokens.get(position).line);
@@ -389,6 +407,7 @@ public class Parser {
 
     //Stores a function
     public void function() {
+        int positionSave;
         String functionName = "";
         int curlyBuffer = 0;
         
@@ -422,7 +441,12 @@ public class Parser {
         }
     }
 
-    //Checks if is a function
+    //Checks if is a function based on inputed name
+    public boolean isFunc(String name) {
+        return functions.get(name) != null;
+    }
+
+    //Checks if is a function based on current token
     public boolean isFunc() {
         return functions.get(tokens.get(position).data) != null;
     }
@@ -436,10 +460,11 @@ public class Parser {
         ArrayList<Var> tempVar = new ArrayList<>();
         int parenBuffer = 0;
         int paramCount = 0;
+        boolean varFound = false;
         
 
         //Saves position to return to
-        positionSave = position;
+        positionSaves.push(position);
 
         //grabs the called function's name
         if (tokens.get(position).TokenType == TokenType.IDENTIFIER) {
@@ -449,9 +474,10 @@ public class Parser {
         }
 
         //moves pointer to the beginning of the parameters
-        while (tokens.get(position-1).TokenType != TokenType.OPEN_PAREN) {
+        while (tokens.get(position).TokenType != TokenType.OPEN_PAREN) {
             position++;
         }
+        position++;
 
         //Adds the values given to an ArrayList called 'parameters'
         while (tokens.get(position).TokenType != TokenType.CLOSED_PAREN || parenBuffer > 0) {
@@ -463,13 +489,39 @@ public class Parser {
             }
             
             if (tokens.get(position).TokenType != TokenType.COMMA && tokens.get(position).TokenType != TokenType.OPEN_PAREN && tokens.get(position).TokenType != TokenType.CLOSED_PAREN) {
-                parameters.add(tokens.get(position));
+                if (tokens.get(position).TokenType == TokenType.IDENTIFIER) {
+                    for (int i = 0; i < varStorage.size(); i++) {
+                        if (varStorage.get(i).identifier.equals(tokens.get(position).data)) {
+                            parameters.add(new Token(varStorage.get(i).TokenType, varStorage.get(i).data, tokens.get(position).line));
+                            varFound = true;
+                            break;
+                        }
+                    }
+
+                    if (inFunc && !varFound && !this.tempVarStorage.empty()) {
+                        for (int i = 0; i < this.tempVarStorage.peek().size(); i++) {
+                            if (this.tempVarStorage.peek().get(i).identifier.equals(tokens.get(position).data)) {
+                                parameters.add(new Token(this.tempVarStorage.peek().get(i).TokenType, this.tempVarStorage.peek().get(i).data, tokens.get(position).line));
+                                varFound = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!varFound) {
+                        LaizE.Error("Variable " + tokens.get(position).data + " undeclared", "Parser.callFunction", tokens.get(position).line);
+                    }
+                } else {
+                    parameters.add(tokens.get(position));
+                }
+                
             }
             position++;
         } 
 
+
         //Sets position to the corresponding function's position
-        if (isFunc()) {
+        if (isFunc(functionName)) {
             position = functions.get(functionName);
         } else {
             LaizE.Error("Function " + functionName + " undeclared", "Parser.callFunction", tokens.get(position).line);
@@ -479,12 +531,12 @@ public class Parser {
         position++;
         returnType = tokens.get(position).TokenType;
         returnTypes.push(returnType);
+        
 
         //Skips to the beginning of the parameters
         while (tokens.get(position-1).TokenType != TokenType.OPEN_PAREN) {
             position++;
         }
-        
         //Adds parameters to a list of temporary variables
         while (tokens.get(position).TokenType != TokenType.CLOSED_PAREN) {
             if (paramCount >= parameters.size()) {
@@ -497,6 +549,8 @@ public class Parser {
             position++;
         }
 
+        tempVarStorage.push(tempVar);
+
         //Runs function
         while (tokens.get(position).TokenType != TokenType.OPEN_CURLY) {
             position++;
@@ -505,7 +559,11 @@ public class Parser {
             checkToken(tokens.get(position));
         }
 
-        
+        //Returns position to where it was before
+        if (returnType == TokenType.NA) {
+            position = positionSaves.pop();
+        }
+
         //Return error handling
         if (returnType == TokenType.NA && returnedType != TokenType.NA) {
             LaizE.Error("Unexpected Return statement", "Parser.callFunction", tokens.get(position).line);
@@ -523,9 +581,8 @@ public class Parser {
             }
         }
 
-        //Returns position to where it was before
-        position = positionSave;
-        if (tokens.get(position).TokenType == TokenType.IDENTIFIER && peek(1).TokenType == TokenType.OPEN_PAREN) {
+        
+        if (returnType == TokenType.NA && peek(1).TokenType == TokenType.OPEN_PAREN) {
             parenBuffer = 0;
             while (tokens.get(position).TokenType != TokenType.CLOSED_PAREN || parenBuffer > 0) {
                 if (tokens.get(position).TokenType == TokenType.OPEN_PAREN) {parenBuffer++;}
@@ -571,21 +628,34 @@ public class Parser {
                     for (int i = 0; i < varStorage.size(); i++) {
                         if (type.data.equals(varStorage.get(i).identifier)) {
                             tempVarStorage = varStorage.get(i);
+                            varFound = true;
+                            break;
+                        }
+                    }
+                    if (inFunc && !varFound && !this.tempVarStorage.empty()) {
+                        for (int i = 0; i < this.tempVarStorage.peek().size(); i++) {
+                            if (this.tempVarStorage.peek().get(i).identifier.equals(tokens.get(position).data)) {
+                                tempVarStorage = this.tempVarStorage.peek().get(i);
+                                varFound = true;
+                                break;
+                            }
                         }
                     }
                     //Checks for function & whether or not the function is declared. if not a function, checks whether it's an undeclared function or variable
+                    
+                    
                     if (!varFound && isFunc()) {
                         if (peek(1).TokenType != TokenType.OPEN_PAREN) {
-                            LaizE.Error("Missing token '('", "Parser.opperationInt", tokens.get(position).line);
+                            LaizE.Error("Missing token '('", "Parser.returnHandler", tokens.get(position).line);
                         }
                         callFunction();
                         checking = true;
                         break;
                     } else if (!varFound && !isFunc()) {
                         if (peek(1).TokenType == TokenType.OPEN_PAREN) {
-                            LaizE.Error("Undeclared function " + tokens.get(position).data, "Parser.opperationInt", tokens.get(position).line);
+                            LaizE.Error("Undeclared function " + tokens.get(position).data, "Parser.returnHandler", tokens.get(position).line);
                         } else {
-                            LaizE.Error("Undeclared variable " + tokens.get(position).data, "Parser.opperationInt", tokens.get(position).line);
+                            LaizE.Error("Undeclared variable " + tokens.get(position).data, "Parser.returnHandler", tokens.get(position).line);
                         }
                     }
 
@@ -697,7 +767,7 @@ public class Parser {
             position++;
         }
         
-        positionSave = position;
+        positionSaves.push(position);
 
         //Runs if the condition is true
         if (conditional(true)) {
@@ -711,7 +781,7 @@ public class Parser {
                     checkToken(tokens.get(position));
                 }
 
-                position = positionSave;
+                position = positionSaves.peek();
                 if (!conditional(true)) {
                     break;
                 }
@@ -743,7 +813,7 @@ public class Parser {
             position++;
         }
         
-        
+        positionSaves.pop();
         
     }
 
@@ -775,12 +845,12 @@ public class Parser {
             //Checks for function & whether or not the function is declared. if not a function, checks whether it's an undeclared function or variable
            if (!varFound && isFunc()) {
                 if (peek(1).TokenType != TokenType.OPEN_PAREN) {
-                    LaizE.Error("Missing token '('", "Parser.opperationInt", tokens.get(position).line);
+                    LaizE.Error("Missing token '('", "Parser.forLoop", tokens.get(position).line);
                 }
                 callFunction();
             } else if (!varFound && !isFunc()) {
                 if (peek(1).TokenType == TokenType.OPEN_PAREN) {
-                    LaizE.Error("Undeclared function " + tokens.get(position).data, "Parser.opperationInt", tokens.get(position).line);
+                    LaizE.Error("Undeclared function " + tokens.get(position).data, "Parser.forLoop", tokens.get(position).line);
                 }
             } 
 
@@ -876,7 +946,7 @@ public class Parser {
         }
 
         //Skips for loop if the condition isnt true
-        positionSave = position;
+        positionSaves.push(position);
         if (!condition) {
             while (tokens.get(position).TokenType != TokenType.CLOSED_CURLY || curlyBuffer > 0) {
                 if (tokens.get(position).TokenType == TokenType.OPEN_CURLY) {curlyBuffer++;}
@@ -888,7 +958,7 @@ public class Parser {
 
         //Runs while the condition is true
         while(condition) {
-            position = positionSave;
+            position = positionSaves.peek();
 
             while (tokens.get(position).TokenType != TokenType.CLOSED_CURLY) {
                 checkToken(tokens.get(position));
@@ -908,6 +978,7 @@ public class Parser {
             }
             
         }
+        positionSaves.pop();
     }
 
     //Changes the value of a variable based on the opperation
@@ -1046,6 +1117,7 @@ public class Parser {
         Token id = tokens.get(position);
         Var tempVarStorage = null;
         boolean checking = true;
+        boolean varFound = false;
         int tempPosition;
         TokenType[] symbols = {TokenType.EQUALS, TokenType.EQUALS_EQUALS, TokenType.BANG_EQUALS, TokenType.GREATER, TokenType.GREATER_EQUALS, TokenType.LESS, TokenType.LESS_EQUALS};
 
@@ -1075,19 +1147,29 @@ public class Parser {
                         for (int i = 0; i < varStorage.size(); i++) {
                             if (type.data.equals(varStorage.get(i).identifier)) {
                                 tempVarStorage = varStorage.get(i);
+                                varFound = true;
                             }
                         }
-                        if (functions.get(type.data) != null) {
-                            
-                            
+                        if (inFunc && !varFound) {
+                            for (int i = 0; i < this.tempVarStorage.peek().size(); i++) {
+                                if (this.tempVarStorage.peek().get(i).identifier.equals(tokens.get(position).data)) {
+                                    tempVarStorage = this.tempVarStorage.peek().get(i);
+                                    varFound = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (!varFound && functions.get(type.data) != null) {
                             callFunction();
                             checking = true;
-
+                            varFound = true;
                             break;
                         }
-                        if (tempVarStorage == null) {
+                        if (!varFound) {
                             LaizE.Error("Variable " + type.data + " not declared", "Parser.storeVar", type.line);
                         }
+                        varFound = false;
 
                         
                         switch (tempVarStorage.TokenType) {
@@ -1175,12 +1257,24 @@ public class Parser {
 
     
         if (tokens.get(position).TokenType == TokenType.IDENTIFIER) {
+            
             for (int i = 0; i < varStorage.size(); i++) {
                 if (varStorage.get(i).identifier.equals(tokens.get(position).data)) {
                     toUpdate = varStorage.get(i);
                     break;
                 }
             }
+
+            if (inFunc && toUpdate == null) {
+                for (int i = 0; i < this.tempVarStorage.peek().size(); i++) {
+                    if (this.tempVarStorage.peek().get(i).identifier.equals(tokens.get(position).data)) {
+                        toUpdate = this.tempVarStorage.peek().get(i);
+                        break;
+                    }
+                }
+            }
+            
+            
 
             if (toUpdate == null) {
                 LaizE.Error("Undeclared variable " + tokens.get(position).data, "Parser.updateVar", tokens.get(position).line);
@@ -1217,6 +1311,15 @@ public class Parser {
                             tempVarStorage = varStorage.get(i);
                         }
                     }
+
+                    if (inFunc && tempVarStorage == null) {
+                        for (int i = 0; i < this.tempVarStorage.peek().size(); i++) {
+                            if (this.tempVarStorage.peek().get(i).identifier.equals(tokens.get(position).data)) {
+                                tempVarStorage = this.tempVarStorage.peek().get(i);
+                                break;
+                            }
+                        }
+                    }
                     if (functions.get(type.data) != null) {
                         callFunction();
                         checking = true;
@@ -1246,7 +1349,7 @@ public class Parser {
                             update = String.valueOf(opperationDec());
                             break;
                         default:
-                            LaizE.Error("Unregistered token type for variable " + tempVarStorage.identifier, "Parser.updateVar", type.line);
+                            LaizE.Error("Unregistered token type " + tempVarStorage.TokenType + " for variable " + tempVarStorage.identifier, "Parser.updateVar", type.line);
                     }
                     break;
                 case TokenType.STRING:
