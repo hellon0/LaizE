@@ -1,5 +1,5 @@
 # LaizE
-Coding language I built somewhat from scratch. Please let me know of any errors or any suggestions! You'll notice it's very similar to java, as I'm too lazy to come up with my own token names and formats.
+Coding language I made that runs through Java. Doesn't work the same as a compiler, as that's beyond my abilities at the moment, but this was used as a project to become more proficient in Java. Very rudimentery with many issues.
 
 
 ##Syntax:
